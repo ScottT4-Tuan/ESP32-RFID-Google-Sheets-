@@ -1,0 +1,125 @@
+#include "WiFi.h"
+#include <HTTPClient.h>
+#include <LiquidCrystal_I2C.h>
+//----------------------------------------
+//----------------------------------------SSID and PASSWORD of your WiFi network.
+const char* ssid = "Scott";  //--> Your wifi name
+const char* password = "12345678"; //--> Your wifi password
+//----------------------------------------
+
+// Google script Web_App_URL.
+String Web_App_URL = "https://script.google.com/macros/s/AKfycbzc0OQDwnaSPHA46g-k3uccSK7PLoCh3Ye526QrUXQfRZ9a06k32_mVe-c3DrklUVWsbg/exec";
+
+int uid, age;
+String name; 
+int sheet_value = 0; 
+int check_value = 13; 
+
+// Byte array variable for custom degree characters.
+byte degree_Char[] = {
+  B00110,
+  B01001,
+  B01001,
+  B00110,
+  B00000,
+  B00000,
+  B00000,
+  B00000
+};
+String getValue(String data, char separator, int index) {
+  int found = 0;
+  int strIndex[] = { 0, -1 };
+  int maxIndex = data.length() - 1;
+  
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
+      found++;
+      strIndex[0] = strIndex[1] + 1;
+      strIndex[1] = (i == maxIndex) ? i+1 : i;
+    }
+  }
+  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+//________________________________________________________________________________VOID SETUP()
+void setup() {
+  // put your setup code here, to run once:
+
+  Serial.begin(115200);
+  Serial.println();
+  delay(1000);
+
+  WiFi.mode(WIFI_STA);
+
+  delay(1000);
+  WiFi.begin(ssid, password);
+}
+//________________________________________________________________________________ 
+
+//________________________________________________________________________________VOID LOOP()
+void loop() {
+  read_sheet();
+}
+void read_sheet(){
+  
+  // put your main code here, to run repeatedly:
+
+  //----------------------------------------Conditions that are executed when WiFi is connected.
+  // This condition is the condition for reading or getting data from Google Sheets.
+  if (WiFi.status() == WL_CONNECTED) {
+    // Create a URL for reading or getting data from Google Sheets.
+    String Read_Data_URL = Web_App_URL + "?sts=read";
+
+    Serial.println();
+    Serial.println("-------------");
+    Serial.println("Read data from Google Spreadsheet...");
+    Serial.print("URL : ");
+    Serial.println(Read_Data_URL);
+
+    //::::::::::::::::::The process of reading or getting data from Google Sheets.
+      // Initialize HTTPClient as "http".
+      HTTPClient http;
+
+      // HTTP GET Request.
+      http.begin(Read_Data_URL.c_str());
+      http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+
+      // Gets the HTTP status code.
+      int httpCode = http.GET(); 
+      Serial.print("HTTP Status Code : ");
+      Serial.println(httpCode);
+  
+      // Getting response from google sheet.
+      String payload;
+      if (httpCode > 0) {
+        payload = http.getString();
+        Serial.println("Payload : " + payload);  
+      }
+  
+      http.end();
+    //::::::::::::::::::
+    
+    Serial.println("-------------");
+
+    //::::::::::::::::::Conditions that are executed if reading or getting data from Google Sheets is successful (HTTP Status Codes : 200).
+    // if (httpCode == 200) {
+    //   // The process of separating data that is read or obtained from Google Sheets.
+    //   uid = getValue(payload, ',', 0).toInt();
+    //   name = getValue(payload, ',', 1);
+    //   age = getValue(payload, ',', 2).toInt();
+    //   Serial.println(uid);
+    //   Serial.println(name);
+    //   Serial.println(age);
+    // }
+    if (httpCode == 200){
+      for (int i = 0; i<100; i++){
+        sheet_value=getValue(payload, ',', i).toInt();
+        Serial.print("Checking: "); Serial.println(sheet_value);
+        if (sheet_value == check_value){
+          Serial.print("Final:"); Serial.println(sheet_value);
+          break; 
+        }
+      }
+    }
+  }
+}
